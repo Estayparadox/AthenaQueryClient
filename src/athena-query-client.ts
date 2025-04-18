@@ -108,12 +108,21 @@ export class AthenaQueryClient {
    * @return {Array} Array of Objects
    */
   private async getQueryResults(QueryExecutionId: string) {
-    const getQueryResultsCommand = new GetQueryResultsCommand({
-      QueryExecutionId,
-    });
-    const response = await this.client.send(getQueryResultsCommand);
+    let nextToken: string | undefined;
+    const allRows: any[] = [];
 
-    return this.mapData(response.ResultSet);
+    do {
+      const command = new GetQueryResultsCommand({
+        QueryExecutionId,
+        ...(nextToken && { NextToken: nextToken }),
+      });
+
+      const { ResultSet, NextToken } = await this.client.send(command);
+      allRows.push(...(ResultSet?.Rows || []));
+      nextToken = NextToken;
+    } while (nextToken);
+
+    return this.mapData({ Rows: allRows });
   }
 
   /**
